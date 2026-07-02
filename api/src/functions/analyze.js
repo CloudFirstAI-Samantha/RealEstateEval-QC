@@ -148,7 +148,7 @@ if (isWestIslandPremium) {
     if (fairHigh < targetHigh) fairHigh = targetHigh;
 
     // Keep the floor realistic (don’t let it sink too low)
-    const targetLow = asking * 0.80; // ~1.0M floor
+    const targetLow = asking * 0.85; // ~1.0M floor
     if (fairLow < targetLow) fairLow = targetLow;
   }
 }
