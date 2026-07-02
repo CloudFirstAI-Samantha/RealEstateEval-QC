@@ -1,0 +1,4 @@
+* { box-sizing: border-box; }
+body { margin: 0; }
+@keyframes vi-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.animate-spin { animation: vi-spin 1s linear infinite; }
