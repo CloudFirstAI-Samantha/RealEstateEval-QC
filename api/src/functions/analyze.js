@@ -116,7 +116,28 @@ If munEval is null AND market.median is null AND comps.length < 2:
         If address contains "Kirkland" or "Beaconsfield" or "Dollard" or "Pointe-Claire":
             fairHigh = max(fairHigh, asking * 0.88)
             fairLow = max(fairLow, asking * 0.78)
-Respond ONLY with compact JSON, no markdown. Free text in ${langName(lang)}. Schema:
+# Upward adjustments for superior features
+if (research.features) {
+    if (research.features.renovatedKitchen) fairHigh += 25000;
+    if (research.features.finishedBasement) fairHigh += 20000;
+    if (research.features.updatedRoof) fairHigh += 15000;
+    if (research.features.updatedWindows) fairHigh += 15000;
+    if (research.features.largeLot) fairHigh += 30000;
+    if (research.features.quietStreet) fairHigh += 20000;
+}
+# West Island premium for desirable neighbourhoods
+const addr = research.address || "";
+if (addr.match(/Kirkland|Beaconsfield|Dollard|Pointe[- ]Claire/i)) {
+    fairHigh = Math.max(fairHigh, asking * 0.92);
+}
+# Protect fairHigh when comps are inferior to the subject property
+if (research.comps && research.comps.length > 0) {
+    const inferiorCount = research.comps.filter(c => c.size < research.size || c.condition < research.condition).length;
+    if (inferiorCount >= 2) {
+        fairHigh = Math.max(fairHigh, asking * 0.90);
+    }
+}
+            Respond ONLY with compact JSON, no markdown. Free text in ${langName(lang)}. Schema:
 {"verdict":"GO"|"CONDITIONAL"|"NO_GO","fairLow":number,"fairHigh":number,"offer":number,"walkAway":number,"confidence":"low"|"med"|"high","findings":[{"t":"","d":"","i":"pos"|"neg"|"neu"}],"levers":[""],"risks":[""],"summary":"max 110 words"}`;
 
 /* ---------- handler ---------- */
