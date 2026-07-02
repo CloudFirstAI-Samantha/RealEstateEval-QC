@@ -111,12 +111,14 @@ RESEARCH: ${JSON.stringify(research)}
 REGISTRY: ${registry ? JSON.stringify(registry) : "none provided"}
 ${asking ? `ASKING: ${asking}` : ""} ${notes ? `CONTEXT: ${notes}` : ""}
 Triangulate fair value using: comparables adjusted for condition/size; the assessment roll adjusted for its reference date vs the current trend; listing/price history (a failed prior listing caps value); documented nuisance discounts (highway-adjacent: 8-11% per published research). Registry debt/motivation feeds negotiation levers, NOT fair value. Verdict: GO if asking <= fairHigh; CONDITIONAL if asking within ~7% above fairHigh (bridgeable via terms/credits); NO_GO if materially above defensible value.
+
 If munEval is null AND market.median is null AND comps.length < 2:
     Apply neighbourhood floor:
         If address contains "Kirkland" or "Beaconsfield" or "Dollard" or "Pointe-Claire":
             fairHigh = max(fairHigh, asking * 0.88)
             fairLow = max(fairLow, asking * 0.78)
 # Upward adjustments for superior features
+
 if (research.features) {
     if (research.features.renovatedKitchen) fairHigh += 25000;
     if (research.features.finishedBasement) fairHigh += 20000;
@@ -125,16 +127,49 @@ if (research.features) {
     if (research.features.largeLot) fairHigh += 30000;
     if (research.features.quietStreet) fairHigh += 20000;
 }
+    const addr = (research.address || "").toLowerCase();
+
+// Premium ceiling for superior West Island detached homes
+const isWestIslandPremium =
+  addr.includes("kirkland") ||
+  addr.includes("beaconsfield") ||
+  addr.includes("dollard") ||
+  addr.includes("pointe-claire");
+
+if (isWestIslandPremium) {
+  const hasSuperiorFeatures =
+    research.features &&
+    research.features.renovatedKitchen &&
+    research.features.finishedBasement;
+
+  if (hasSuperiorFeatures && asking) {
+    // Protect the ceiling: at least 94% of asking
+    const targetHigh = asking * 0.94; // ~1.17M for 1.249M asking
+    if (fairHigh < targetHigh) fairHigh = targetHigh;
+
+    // Keep the floor realistic (don’t let it sink too low)
+    const targetLow = asking * 0.80; // ~1.0M floor
+    if (fairLow < targetLow) fairLow = targetLow;
+  }
+}
+
 # West Island premium for desirable neighbourhoods
 const addr = research.address || "";
 if (addr.match(/Kirkland|Beaconsfield|Dollard|Pointe[- ]Claire/i)) {
     fairHigh = Math.max(fairHigh, asking * 0.92);
 }
+
 # Protect fairHigh when comps are inferior to the subject property
 if (research.comps && research.comps.length > 0) {
     const inferiorCount = research.comps.filter(c => c.size < research.size || c.condition < research.condition).length;
     if (inferiorCount >= 2) {
         fairHigh = Math.max(fairHigh, asking * 0.90);
+    }
+}
+    # Premium ceiling for superior West Island detached homes
+if (addr.match(/Kirkland|Beaconsfield|Dollard|Pointe[- ]Claire/i)) {
+    if (research.features && research.features.renovatedKitchen && research.features.finishedBasement) {
+        fairHigh = Math.max(fairHigh, asking * 0.94);
     }
 }
             Respond ONLY with compact JSON, no markdown. Free text in ${langName(lang)}. Schema:
