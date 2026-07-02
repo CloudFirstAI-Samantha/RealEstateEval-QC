@@ -1,0 +1,12 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/api/*", "/assets/*"]
+  },
+  "globalHeaders": {
+    "X-Robots-Tag": "noindex"
+  },
+  "platform": {
+    "apiRuntime": "node:20"
+  }
+}
