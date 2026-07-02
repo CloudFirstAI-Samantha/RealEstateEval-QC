@@ -97,12 +97,12 @@ async function tavilySearch(query) {
 const langName = (lang) => (lang === "fr" ? "French" : "English");
 
 const researchPrompt = (input, asking, notes, lang, webContext) => `You are a Quebec real-estate valuation researcher. Property: "${input}". ${asking ? `Asking price: ${asking}.` : ""} ${notes ? `Agent-provided context (treat as primary evidence — agents often paste the Centris listing here): ${notes}` : ""}
-${webContext ? `LIVE WEB SEARCH RESULTS (use as your main source, cite nothing, extract facts):\n${webContext}` : "No live web access: rely on the agent-provided context and your general knowledge of the municipality. Be conservative; mark unknowns as null and flag uncertainty in 'notes'."}
-Determine: listing details and price history; municipal assessment (note the roll year — Quebec triennial rolls reflect market values 18 months before taking effect, e.g. a 2023-2025 roll = July 2021 values, a 2026-2028 roll = July 2024 values); municipal median single-family price and trend; days on market; 2-4 comparables; nuisance factors (highway, rail, power lines).
+${webContext ? `LIVE WEB SEARCH RESULTS (use as your main source, cite nothing, extract facts):\n${webContext}` : "No live web access: rely on the agent-provided context and your general knowledge of the municipality. Mark unknowns as null and flag uncertainty in 'notes'."}
+Determine: listing details and price history; municipal assessment (note the roll year — Quebec triennial rolls reflect market values 18 months before taking effect, e.g. a 2023-2025 roll = July 2021 values, a 2026-2028 roll = July 2024 values); municipal median single-family price and trend; days on market; 10 comparables; nuisance factors (highway, rail, power lines).
 Respond ONLY with compact JSON, no markdown. Free-text values in ${langName(lang)}, terse. Schema:
 {"found":bool,"address":"","asking":number|null,"listingStatus":"","munEval":number|null,"evalYear":"","evalNote":"","market":{"median":number|null,"trend":"","dom":number|null,"note":""},"history":"","comps":[{"addr":"","price":number,"note":""}],"nuisances":[""],"notes":""}`;
 
-const registryPrompt = (lang) => `This image is a Quebec land registry document (index aux immeubles) for the property under analysis. Extract: original purchase (year, price) by the current owner; all hypothecs (year, lender, registered amount); recent transfers between co-owners; then infer 2-4 short insights (e.g. refinance-driven price floor, equity pressure, priority-ranking risk for a buyer). Quebec lenders often register collateral charges up to 125% of value — a registered amount is NOT an appraisal.
+const registryPrompt = (lang) => `This image is a Quebec land registry document (index aux immeubles) for the property under analysis. Extract: original purchase (year, price) by the current owner; all hypothecs (year, lender, registered amount); recent transfers between co-owners; then infer 10 short insights (e.g. refinance-driven price floor, equity pressure, priority-ranking risk for a buyer). Quebec lenders often register collateral charges up to 125% of value — a registered amount is NOT an appraisal.
 Respond ONLY with compact JSON, no markdown. Free text in ${langName(lang)}, terse. Schema:
 {"purchase":{"year":"","price":number}|null,"hypothecs":[{"year":"","lender":"","amount":number}],"transfers":[""],"insights":[""]}`;
 
@@ -110,7 +110,12 @@ const synthesisPrompt = (research, registry, asking, notes, lang) => `You are a 
 RESEARCH: ${JSON.stringify(research)}
 REGISTRY: ${registry ? JSON.stringify(registry) : "none provided"}
 ${asking ? `ASKING: ${asking}` : ""} ${notes ? `CONTEXT: ${notes}` : ""}
-Triangulate fair value using: comparables adjusted for condition/size; the assessment roll adjusted for its reference date vs the current trend; listing/price history (a failed prior listing caps value); documented nuisance discounts (highway-adjacent: 8-11% per published research). Registry debt/motivation feeds negotiation levers, NOT fair value. Verdict: GO if asking <= fairHigh; CONDITIONAL if asking within ~7% above fairHigh (bridgeable via terms/credits); NO_GO if materially above defensible value. If data is thin, widen the band and set confidence "low".
+Triangulate fair value using: comparables adjusted for condition/size; the assessment roll adjusted for its reference date vs the current trend; listing/price history (a failed prior listing caps value); documented nuisance discounts (highway-adjacent: 8-11% per published research). Registry debt/motivation feeds negotiation levers, NOT fair value. Verdict: GO if asking <= fairHigh; CONDITIONAL if asking within ~7% above fairHigh (bridgeable via terms/credits); NO_GO if materially above defensible value.
+If munEval is null AND market.median is null AND comps.length < 2:
+    Apply neighbourhood floor:
+        If address contains "Kirkland" or "Beaconsfield" or "Dollard" or "Pointe-Claire":
+            fairHigh = max(fairHigh, asking * 0.88)
+            fairLow = max(fairLow, asking * 0.78)
 Respond ONLY with compact JSON, no markdown. Free text in ${langName(lang)}. Schema:
 {"verdict":"GO"|"CONDITIONAL"|"NO_GO","fairLow":number,"fairHigh":number,"offer":number,"walkAway":number,"confidence":"low"|"med"|"high","findings":[{"t":"","d":"","i":"pos"|"neg"|"neu"}],"levers":[""],"risks":[""],"summary":"max 110 words"}`;
 
