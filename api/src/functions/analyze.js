@@ -116,7 +116,7 @@ If munEval is null AND market.median is null AND comps.length < 2:
     Apply neighbourhood floor:
         If address contains "Kirkland" or "Beaconsfield" or "Dollard" or "Pointe-Claire":
             fairHigh = max(fairHigh, asking * 0.88)
-            fairLow = max(fairLow, asking * 0.78)
+            fairLow = max(fairLow, asking * 0.85)
 # Upward adjustments for superior features
 
 if (research.features) {
